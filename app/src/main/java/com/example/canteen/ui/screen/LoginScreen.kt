@@ -1,5 +1,7 @@
 package com.example.canteen.ui.screen
 
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,20 +10,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.canteen.ui.component.InputField
-import com.example.canteen.ui.component.SocialButton
 import com.example.canteen.ui.theme.GrayBg
 import com.example.canteen.ui.theme.YellowPrimary
-import com.example.canteen.R
-
-// 🔥 DB
 import com.example.canteen.data.DataHelper
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun LoginScreen(navController: NavController) {
@@ -30,7 +29,9 @@ fun LoginScreen(navController: NavController) {
     var password by remember { mutableStateOf("") }
 
     val context = LocalContext.current
-    val db = DataHelper(context)
+
+    // 🔥 FIX: pakai remember biar gak recreate terus
+    val db = remember { DataHelper(context) }
 
     Column(
         modifier = Modifier
@@ -42,7 +43,11 @@ fun LoginScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(40.dp))
 
-        Text("Canteen", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = "Canteen",
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold
+        )
 
         Spacer(modifier = Modifier.height(40.dp))
 
@@ -62,6 +67,14 @@ fun LoginScreen(navController: NavController) {
                 val success = db.login(email, password)
 
                 if (success) {
+
+                    // 🔥 SESSION
+                    val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                    sharedPref.edit()
+                        .putBoolean("isLoggedIn", true)
+                        .putString("email", email)
+                        .apply()
+
                     Toast.makeText(context, "Login berhasil 🎉", Toast.LENGTH_SHORT).show()
 
                     navController.navigate("home") {
@@ -84,7 +97,7 @@ fun LoginScreen(navController: NavController) {
         Row {
             Text("Don't have an account? ")
             Text(
-                "sign up",
+                text = "Sign Up",
                 color = YellowPrimary,
                 modifier = Modifier.clickable {
                     navController.navigate("register")
@@ -92,4 +105,10 @@ fun LoginScreen(navController: NavController) {
             )
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoginScreenPreview() {
+    LoginScreen(navController = rememberNavController())
 }

@@ -1,5 +1,6 @@
 package com.example.canteen.ui.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,23 +9,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
-import com.example.canteen.R
+import androidx.navigation.compose.rememberNavController
 import com.example.canteen.ui.component.InputField
 import com.example.canteen.ui.theme.GrayBg
 import com.example.canteen.ui.theme.YellowPrimary
 
 // 🔥 DB
 import com.example.canteen.data.DataHelper
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun RegisterScreen(navController: NavController) {
 
+    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
@@ -46,6 +48,7 @@ fun RegisterScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(40.dp))
 
+        InputField(name, { name = it }, "Name")
         InputField(email, { email = it }, "Email")
         InputField(password, { password = it }, "Password", true)
         InputField(confirm, { confirm = it }, "Confirm Password", true)
@@ -55,7 +58,7 @@ fun RegisterScreen(navController: NavController) {
         Button(
             onClick = {
 
-                if (email.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
+                if (name.isEmpty() || email.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
                     Toast.makeText(context, "Isi semua field", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
@@ -65,7 +68,8 @@ fun RegisterScreen(navController: NavController) {
                     return@Button
                 }
 
-                val success = db.register(email, password)
+                // ✅ FIX UTAMA DI SINI
+                val success = db.register(email, password, name)
 
                 if (success) {
                     Toast.makeText(context, "Register berhasil 🎉", Toast.LENGTH_SHORT).show()
@@ -98,4 +102,10 @@ fun RegisterScreen(navController: NavController) {
             )
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RegisterScreenPreview() {
+    RegisterScreen(navController = rememberNavController())
 }

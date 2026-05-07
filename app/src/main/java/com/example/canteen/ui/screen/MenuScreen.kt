@@ -3,40 +3,30 @@ package com.example.canteen.ui.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 
-import com.example.canteen.ui.theme.GrayBg
-import com.example.canteen.data.MenuItem
-import com.example.canteen.ui.component.MenuCard
-import com.example.canteen.ui.component.TopBar
-
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.LaunchedEffect
-
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.layout.ContentScale
-
 import com.example.canteen.data.DataHelper
-import com.example.canteen.R // 🔥 penting!
+import com.example.canteen.ui.component.MenuCard
+import com.example.canteen.data.MenuItem // 🔥 WAJIB
+import com.example.canteen.ui.theme.GrayBg
 
 @Composable
-fun HomeScreen(navController: NavController) {
+fun MenuScreen(navController: NavController) {
 
     val context = LocalContext.current
-    val db = remember { DataHelper(context) }
+    val db = DataHelper(context)
 
-    // 🔥 state list menu
     val menuList = remember { mutableStateListOf<MenuItem>() }
 
-    // 🔥 load data awal
+    // 🔥 LOAD DATA
     LaunchedEffect(Unit) {
         menuList.clear()
         menuList.addAll(db.getAllMenu())
@@ -54,27 +44,29 @@ fun HomeScreen(navController: NavController) {
                 .padding(16.dp)
         ) {
 
+            Text(
+                text = "Menu Kantin",
+                style = MaterialTheme.typography.titleLarge
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
 
-            TopBar(navController)
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 🔥 kondisi kosong
             if (menuList.isEmpty()) {
+
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("Belum ada menu 😢", color = Color.Gray)
                 }
+
             } else {
-                // 🔥 list menu
+
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    itemsIndexed(menuList) { index, item ->
+                    items(menuList) { item ->
+
                         MenuCard(
                             item = item,
 
@@ -86,7 +78,10 @@ fun HomeScreen(navController: NavController) {
                             // 🗑️ DELETE
                             onDelete = {
                                 db.deleteMenu(item.id)
-                                menuList.removeAt(index)
+
+                                // 🔄 REFRESH
+                                menuList.clear()
+                                menuList.addAll(db.getAllMenu())
                             }
                         )
                     }
@@ -94,7 +89,7 @@ fun HomeScreen(navController: NavController) {
             }
         }
 
-        // ➕ tombol tambah
+        // ➕ ADD MENU
         FloatingActionButton(
             onClick = {
                 navController.navigate("add_menu")
