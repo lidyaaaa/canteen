@@ -1,150 +1,257 @@
 package com.example.canteen.ui.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberAsyncImagePainter
 
-import com.example.canteen.data.DataHelper
+import com.example.canteen.data.FirebaseRepository
 import com.example.canteen.data.MenuItem
-
-import com.example.canteen.ui.component.MenuCard
-import com.example.canteen.ui.component.TopBar
 import com.example.canteen.ui.component.BottomNavBar
-
-import com.example.canteen.ui.theme.GrayBg
+import com.example.canteen.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(navController: NavController) {
 
-    val context = LocalContext.current
+    val repository = remember { FirebaseRepository() }
+    val scope = rememberCoroutineScope()
 
-    val db = remember {
-        DataHelper(context)
-    }
+    var userName by remember { mutableStateOf("User") }
+    var searchQuery by remember { mutableStateOf("") }
+    var menuList by remember { mutableStateOf<List<MenuItem>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var cartCount by remember { mutableStateOf(0) }
 
-    val menuList = remember {
-        mutableStateListOf<MenuItem>()
-    }
-
-    // 🔥 LOAD MENU
     LaunchedEffect(Unit) {
+        scope.launch {
+            // Get user name
+            val userResult = repository.getCurrentUser()
+            userResult.onSuccess { user ->
+                userName = user.name
 
-        menuList.clear()
+                // Get cart count
+                repository.getCartCount(user.id).onSuccess {
+                    cartCount = it
+                }
+            }
 
-        menuList.addAll(
-            db.getAllMenu()
-        )
+            // Get menu list
+            val menuResult = repository.getAllMenu()
+            menuResult.onSuccess { menus ->
+                menuList = menus
+            }
+
+            isLoading = false
+        }
     }
 
     Scaffold(
-
         bottomBar = {
-
             BottomNavBar(
                 navController = navController,
-                currentRoute = "home"
+                currentRoute = "home",
+                cartCount = cartCount
             )
         }
-
     ) { paddingValues ->
 
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(GrayBg)
+                .padding(paddingValues)
         ) {
-
-            Column(
+            // Top bar
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(14.dp)
+                    .fillMaxWidth()
+                    .background(White)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                TopBar(navController)
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // 🔥 EMPTY
-                if (menuList.isEmpty()) {
-
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(YellowPrimary),
                         contentAlignment = Alignment.Center
                     ) {
-
                         Text(
-                            text = "Belum ada menu 😢",
-                            color = Color.Gray
+                            text = userName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                            color = White,
+                            fontWeight = FontWeight.Bold
                         )
                     }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = userName,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
+                }
 
-                } else {
-
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ){
-
-                        itemsIndexed(menuList) { index, item ->
-
-                            MenuCard(
-                                item = item,
-
-                                onEdit = {
-                                    navController.navigate(
-                                        "edit_menu/${item.id}"
-                                    )
-                                },
-
-                                onDelete = {
-
-                                    db.deleteMenu(item.id)
-
-                                    menuList.removeAt(index)
-                                }
-                            )
-                        }
+                Row {
+                    IconButton(onClick = { navController.navigate("cart") }) {
+                        Icon(
+                            imageVector = Icons.Default.ShoppingCart,
+                            contentDescription = "Cart"
+                        )
+                    }
+                    IconButton(onClick = { /* Notifications */ }) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notifications"
+                        )
                     }
                 }
             }
 
-            FloatingActionButton(
-                onClick = {
-                    navController.navigate("add_menu")
+            // Search bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "Search")
                 },
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(
-                        bottom = 80.dp,
-                        end = 16.dp
-                    )
-            ) {
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = White,
+                    unfocusedContainerColor = White,
+                    focusedBorderColor = GrayInput,
+                    unfocusedBorderColor = GrayInput
+                )
+            )
 
-                Text("+")
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = YellowPrimary)
+                }
+            } else if (menuList.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Belum ada menu 😢",
+                        color = GrayText,
+                        fontSize = 16.sp
+                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(menuList.filter {
+                        it.name.contains(searchQuery, ignoreCase = true)
+                    }) { item ->
+                        MenuGridCard(
+                            item = item,
+                            onClick = {
+                                navController.navigate("menu_detail/${item.id}")
+                            }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun HomeScreenPreview() {
+fun MenuGridCard(
+    item: MenuItem,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            if (item.imageUrl.isNotEmpty()) {
+                Image(
+                    painter = rememberAsyncImagePainter(item.imageUrl),
+                    contentDescription = item.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(GrayInput),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No Image", color = GrayText, fontSize = 12.sp)
+                }
+            }
 
-    HomeScreen(
-        navController = rememberNavController()
-    )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(item.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 2)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Rp ${item.price}",
+                color = YellowPrimary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = YellowPrimary,
+                    contentColor = Black
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
 }

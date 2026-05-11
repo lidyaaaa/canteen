@@ -48,9 +48,9 @@ fun CanteenCardPreview() {
 
     CanteenCard(
         canteen = Canteen(
-            id = 1,
+            id = "1",
             name = "Kantin Bu Siti",
-            ownerId = 1
+            ownerId = "1"
         ),
         onClick = {}
     )

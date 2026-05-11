@@ -2,6 +2,7 @@ package com.example.canteen.ui.screen
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,167 +11,222 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.example.canteen.data.DataHelper
-import com.example.canteen.ui.component.InputField
-import com.example.canteen.ui.theme.GrayBg
-import com.example.canteen.ui.theme.YellowPrimary
+import com.example.canteen.R
+import com.example.canteen.data.FirebaseRepository
+import com.example.canteen.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(navController: NavController) {
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val repository = remember { FirebaseRepository() }
+    val scope = rememberCoroutineScope()
 
-    // 🔥 DATABASE
-    val db = remember {
-        DataHelper(context)
-    }
-
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(GrayBg)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(White),
+        contentAlignment = Alignment.Center
     ) {
 
-        Spacer(modifier = Modifier.height(40.dp))
-
-        Text(
-            text = "Canteen",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        InputField(
-            email,
-            { email = it },
-            "Email"
-        )
-
-        InputField(
-            password,
-            { password = it },
-            "Password",
-            true
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Button(
-            onClick = {
-
-                if (
-                    email.isEmpty() ||
-                    password.isEmpty()
-                ) {
-
-                    Toast.makeText(
-                        context,
-                        "Isi semua field",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                    return@Button
-                }
-
-                // 🔥 LOGIN SEKARANG RETURN ROLE
-                val role = db.login(
-                    email,
-                    password
-                )
-
-                if (role != null) {
-
-                    // 🔥 SESSION
-                    val sharedPref = context.getSharedPreferences(
-                        "user_session",
-                        Context.MODE_PRIVATE
-                    )
-
-                    sharedPref.edit()
-                        .putBoolean("isLoggedIn", true)
-                        .putString("email", email)
-                        .putString("role", role)
-                        .apply()
-
-                    Toast.makeText(
-                        context,
-                        "Login berhasil 🎉",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                    // 🔥 ROLE NAVIGATION
-                    when(role) {
-
-                        "admin" -> {
-                            navController.navigate("home")
-                        }
-
-                        "seller" -> {
-                            navController.navigate("home")
-                        }
-
-                        "buyer" -> {
-                            navController.navigate("home")
-                        }
-
-                        else -> {
-                            navController.navigate("home")
-                        }
-                    }
-
-                } else {
-
-                    Toast.makeText(
-                        context,
-                        "Email / Password salah",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = YellowPrimary
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = White
             ),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            elevation = CardDefaults.cardElevation(4.dp)
         ) {
 
-            Text("Sign In")
-        }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row {
-
-            Text("Don't have an account? ")
-
-            Text(
-                text = "Sign Up",
-                color = YellowPrimary,
-                modifier = Modifier.clickable {
-                    navController.navigate("register")
+                // 🍴 LOGO
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // 🍴 LOGO (gambar doang, lebih gede)
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_canteen),
+                        contentDescription = "Logo Canteen",
+                        modifier = Modifier.size(150.dp)  // lebih gede
+                    )
                 }
-            )
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // 📧 EMAIL
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = YellowPrimary,
+                        unfocusedBorderColor = GrayInput,
+                        focusedContainerColor = Color(0xFFF9F9F9),
+                        unfocusedContainerColor = Color(0xFFF9F9F9)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 🔒 PASSWORD
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = YellowPrimary,
+                        unfocusedBorderColor = GrayInput,
+                        focusedContainerColor = Color(0xFFF9F9F9),
+                        unfocusedContainerColor = Color(0xFFF9F9F9)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 🔥 SIGN IN BUTTON
+                Button(
+                    onClick = {
+                        if (email.isEmpty() || password.isEmpty()) {
+                            Toast.makeText(
+                                context,
+                                "Isi semua field",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@Button
+                        }
+
+                        isLoading = true
+
+                        scope.launch {
+                            // ⚠️ HARDCODE TOTAL: langsung cek email
+                            if (email == "admin@gmail.com" && password == "admin123") {
+                                val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                                sharedPref.edit().apply {
+                                    putString("email", email)
+                                    putString("name", "Admin")
+                                    putString("role", "admin")
+                                    apply()
+                                }
+
+                                Toast.makeText(context, "Login Admin berhasil!", Toast.LENGTH_SHORT).show()
+                                navController.navigate("admin_home") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                                isLoading = false
+                                return@launch
+                            }
+
+                            // Login normal (Firebase) untuk user lain
+                            val result = repository.login(email, password)
+
+                            result.onSuccess { user ->
+                                val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                                sharedPref.edit().apply {
+                                    putString("email", user.email)
+                                    putString("name", user.name)
+                                    putString("role", user.role)
+                                    apply()
+                                }
+
+                                Toast.makeText(context, "Login berhasil! Role: ${user.role}", Toast.LENGTH_SHORT).show()
+
+                                when (user.role) {
+                                    "admin" -> navController.navigate("admin_home") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                    "seller" -> navController.navigate("seller_home") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                    else -> navController.navigate("home") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                }
+                            }
+
+                            result.onFailure { error ->
+                                Toast.makeText(context, "Login gagal: ${error.message}", Toast.LENGTH_SHORT).show()
+                            }
+
+                            isLoading = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = YellowPrimary,
+                        contentColor = Black
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    enabled = !isLoading
+                ) {
+
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Black
+                        )
+                    } else {
+                        Text(
+                            text = "sign in",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 📝 SIGN UP
+                Row(
+                    horizontalArrangement = Arrangement.Center
+                ) {
+
+                    Text(
+                        text = "Don't have an account? ",
+                        color = GrayText,
+                        fontSize = 14.sp
+                    )
+
+                    Text(
+                        text = "Sign up",
+                        color = YellowPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            navController.navigate("register")
+                        }
+                    )
+                }
+            }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun LoginScreenPreview() {
-    LoginScreen(
-        navController = rememberNavController()
-    )
 }
