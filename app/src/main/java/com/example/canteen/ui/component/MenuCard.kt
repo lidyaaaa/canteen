@@ -49,7 +49,7 @@ fun MenuCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = item.price,
+                    text = "Rp ${item.price}",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
                     color = Color.DarkGray
@@ -62,11 +62,11 @@ fun MenuCard(
                 horizontalAlignment = Alignment.End
             ) {
 
-                // 🔥 IMAGE
-                if (item.imageUri.isNotEmpty()) {
+                // 🔥 IMAGE (pakai imageUrl, bukan imageUri)
+                if (item.imageUrl.isNotEmpty()) {
 
                     Image(
-                        painter = rememberAsyncImagePainter(item.imageUri),
+                        painter = rememberAsyncImagePainter(item.imageUrl),
                         contentDescription = item.name,
                         modifier = Modifier.size(100.dp),
                         contentScale = ContentScale.Crop

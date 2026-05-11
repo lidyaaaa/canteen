@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import java.security.MessageDigest
 
 class DataHelper(context: Context) :
     SQLiteOpenHelper(context, "canteen.db", null, 7) {
@@ -55,16 +56,16 @@ class DataHelper(context: Context) :
                     "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                     "canteenId INTEGER," +
                     "name TEXT," +
-                    "price TEXT," +
+                    "price INTEGER," +
                     "imageUri TEXT" +
                     ")"
         )
 
-        // 🔥 ADMIN DEFAULT
+        // 🔥 ADMIN DEFAULT (dengan password yang di-hash)
         db.execSQL(
             "INSERT INTO users (email, password, name, role) VALUES (" +
                     "'admin@gmail.com'," +
-                    "'admin123'," +
+                    "'${hashPassword("admin123")}'," +
                     "'Admin'," +
                     "'admin'" +
                     ")"
@@ -83,6 +84,16 @@ class DataHelper(context: Context) :
         db.execSQL("DROP TABLE IF EXISTS menu")
 
         onCreate(db)
+    }
+
+    // =========================
+    // 🔐 PASSWORD HASHING
+    // =========================
+
+    private fun hashPassword(password: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hash = digest.digest(password.toByteArray())
+        return hash.joinToString("") { "%02x".format(it) }
     }
 
     // =========================
@@ -110,16 +121,22 @@ class DataHelper(context: Context) :
 
         check.close()
 
+        val hashedPassword = hashPassword(password)
+
         val values = ContentValues().apply {
             put("email", email)
-            put("password", password)
+            put("password", hashedPassword)
             put("name", name)
             put("role", role)
         }
 
-        db.insert("users", null, values)
+        val result = db.insert(
+            "users",
+            null,
+            values
+        )
 
-        return true
+        return result != -1L
     }
 
     fun login(
@@ -128,19 +145,17 @@ class DataHelper(context: Context) :
     ): String? {
 
         val db = readableDatabase
+        val hashedPassword = hashPassword(password)
 
         val cursor = db.rawQuery(
             "SELECT role FROM users WHERE email=? AND password=?",
-            arrayOf(email, password)
+            arrayOf(email, hashedPassword)
         )
 
         var role: String? = null
 
         if (cursor.moveToFirst()) {
-
-            role = cursor.getString(
-                cursor.getColumnIndexOrThrow("role")
-            )
+            role = cursor.getString(0)
         }
 
         cursor.close()
@@ -151,24 +166,58 @@ class DataHelper(context: Context) :
     fun getUserName(email: String): String {
 
         val db = readableDatabase
-
         val cursor = db.rawQuery(
             "SELECT name FROM users WHERE email=?",
             arrayOf(email)
         )
 
-        var name = "Guest"
+        var name = "User"
 
         if (cursor.moveToFirst()) {
-
-            name = cursor.getString(
-                cursor.getColumnIndexOrThrow("name")
-            )
+            name = cursor.getString(0)
         }
 
         cursor.close()
 
         return name
+    }
+
+    fun getUserIdByEmail(email: String): Int? {
+
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT id FROM users WHERE email=?",
+            arrayOf(email)
+        )
+
+        var id: Int? = null
+
+        if (cursor.moveToFirst()) {
+            id = cursor.getInt(0)
+        }
+
+        cursor.close()
+
+        return id
+    }
+
+    fun getUserRoleByEmail(email: String): String? {
+
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT role FROM users WHERE email=?",
+            arrayOf(email)
+        )
+
+        var role: String? = null
+
+        if (cursor.moveToFirst()) {
+            role = cursor.getString(0)
+        }
+
+        cursor.close()
+
+        return role
     }
 
     // =========================
@@ -194,18 +243,15 @@ class DataHelper(context: Context) :
         )
     }
 
-    fun getCanteenNameById(
-        id: Int
-    ): String {
+    fun getCanteenNameById(id: Int): String {
 
         val db = readableDatabase
-
         val cursor = db.rawQuery(
             "SELECT name FROM canteens WHERE id=?",
             arrayOf(id.toString())
         )
 
-        var name = ""
+        var name = "Unknown Canteen"
 
         if (cursor.moveToFirst()) {
 
@@ -219,6 +265,192 @@ class DataHelper(context: Context) :
         return name
     }
 
+    fun getCanteenIdByOwnerId(ownerId: Int): Int? {
+
+        val db = readableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT id FROM canteens WHERE ownerId=?",
+            arrayOf(ownerId.toString())
+        )
+
+        var canteenId: Int? = null
+
+        if (cursor.moveToFirst()) {
+
+            canteenId = cursor.getInt(
+                cursor.getColumnIndexOrThrow("id")
+            )
+        }
+
+        cursor.close()
+
+        return canteenId
+    }
+
+    fun getAllCanteens(): List<Canteen> {
+
+        val list = mutableListOf<Canteen>()
+        val db = readableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT * FROM canteens",
+            null
+        )
+
+        if (cursor.moveToFirst()) {
+
+            do {
+
+                val canteen = Canteen(
+                    id = cursor.getInt(
+                        cursor.getColumnIndexOrThrow("id")
+                    ).toString(),
+                    name = cursor.getString(
+                        cursor.getColumnIndexOrThrow("name")
+                    ),
+                    ownerId = cursor.getInt(
+                        cursor.getColumnIndexOrThrow("ownerId")
+                    ).toString(),
+                    ownerName = "" // SQLite doesn't have this yet
+                )
+
+                list.add(canteen)
+
+            } while (cursor.moveToNext())
+        }
+
+        cursor.close()
+
+        return list
+    }
+
+    // =========================
+    // 📝 SELLER REQUESTS
+    // =========================
+
+    fun insertSellerRequest(
+        userId: Int,
+        canteenName: String,
+        description: String
+    ): Boolean {
+
+        val db = writableDatabase
+
+        val values = ContentValues().apply {
+            put("userId", userId)
+            put("canteenName", canteenName)
+            put("description", description)
+            put("status", "pending")
+        }
+
+        val result = db.insert(
+            "seller_requests",
+            null,
+            values
+        )
+
+        return result != -1L
+    }
+
+    fun getAllPendingRequests(): List<SellerRequest> {
+
+        val list = mutableListOf<SellerRequest>()
+        val db = readableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT * FROM seller_requests WHERE status='pending'",
+            null
+        )
+
+        if (cursor.moveToFirst()) {
+
+            do {
+
+                val sellerRequest = SellerRequest(
+                    id = cursor.getInt(
+                        cursor.getColumnIndexOrThrow("id")
+                    ),
+                    userId = cursor.getInt(
+                        cursor.getColumnIndexOrThrow("userId")
+                    ),
+                    canteenName = cursor.getString(
+                        cursor.getColumnIndexOrThrow("canteenName")
+                    ),
+                    description = cursor.getString(
+                        cursor.getColumnIndexOrThrow("description")
+                    ),
+                    status = cursor.getString(
+                        cursor.getColumnIndexOrThrow("status")
+                    )
+                )
+
+                list.add(sellerRequest)
+
+            } while (cursor.moveToNext())
+        }
+
+        cursor.close()
+
+        return list
+    }
+
+    fun updateRequestStatus(
+        id: Int,
+        status: String
+    ) {
+
+        val db = writableDatabase
+
+        val values = ContentValues().apply {
+            put("status", status)
+        }
+
+        db.update(
+            "seller_requests",
+            values,
+            "id=?",
+            arrayOf(id.toString())
+        )
+    }
+
+    fun getSellerRequestById(id: Int): SellerRequest? {
+
+        val db = readableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT * FROM seller_requests WHERE id=?",
+            arrayOf(id.toString())
+        )
+
+        var request: SellerRequest? = null
+
+        if (cursor.moveToFirst()) {
+
+            request = SellerRequest(
+                id = cursor.getInt(
+                    cursor.getColumnIndexOrThrow("id")
+                ),
+                userId = cursor.getInt(
+                    cursor.getColumnIndexOrThrow("userId")
+                ),
+                canteenName = cursor.getString(
+                    cursor.getColumnIndexOrThrow("canteenName")
+                ),
+                description = cursor.getString(
+                    cursor.getColumnIndexOrThrow("description")
+                ),
+                status = cursor.getString(
+                    cursor.getColumnIndexOrThrow("status")
+                )
+            )
+        }
+
+        cursor.close()
+
+        return request
+    }
+
     // =========================
     // 🍔 MENU
     // =========================
@@ -226,7 +458,7 @@ class DataHelper(context: Context) :
     fun insertMenu(
         canteenId: Int,
         name: String,
-        price: String,
+        price: Int,
         imageUri: String
     ) {
 
@@ -269,9 +501,9 @@ class DataHelper(context: Context) :
 
                     id = cursor.getInt(
                         cursor.getColumnIndexOrThrow("id")
-                    ),
+                    ).toString(),
 
-                    canteenId = canteenId,
+                    canteenId = canteenId.toString(),
 
                     canteenName = getCanteenNameById(
                         canteenId
@@ -281,11 +513,52 @@ class DataHelper(context: Context) :
                         cursor.getColumnIndexOrThrow("name")
                     ),
 
-                    price = cursor.getString(
+                    price = cursor.getInt(
                         cursor.getColumnIndexOrThrow("price")
                     ),
 
-                    imageUri = cursor.getString(
+                    imageUrl = cursor.getString(
+                        cursor.getColumnIndexOrThrow("imageUri")
+                    ) ?: ""
+                )
+
+                list.add(item)
+
+            } while (cursor.moveToNext())
+        }
+
+        cursor.close()
+
+        return list
+    }
+
+    fun getMenuByCanteenId(canteenId: Int): List<MenuItem> {
+
+        val list = mutableListOf<MenuItem>()
+        val db = readableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT * FROM menu WHERE canteenId=?",
+            arrayOf(canteenId.toString())
+        )
+
+        if (cursor.moveToFirst()) {
+
+            do {
+
+                val item = MenuItem(
+                    id = cursor.getInt(
+                        cursor.getColumnIndexOrThrow("id")
+                    ).toString(),
+                    canteenId = canteenId.toString(),
+                    canteenName = getCanteenNameById(canteenId),
+                    name = cursor.getString(
+                        cursor.getColumnIndexOrThrow("name")
+                    ),
+                    price = cursor.getInt(
+                        cursor.getColumnIndexOrThrow("price")
+                    ),
+                    imageUrl = cursor.getString(
                         cursor.getColumnIndexOrThrow("imageUri")
                     ) ?: ""
                 )
@@ -321,9 +594,9 @@ class DataHelper(context: Context) :
 
                 id = cursor.getInt(
                     cursor.getColumnIndexOrThrow("id")
-                ),
+                ).toString(),
 
-                canteenId = canteenId,
+                canteenId = canteenId.toString(),
 
                 canteenName = getCanteenNameById(
                     canteenId
@@ -333,11 +606,11 @@ class DataHelper(context: Context) :
                     cursor.getColumnIndexOrThrow("name")
                 ),
 
-                price = cursor.getString(
+                price = cursor.getInt(
                     cursor.getColumnIndexOrThrow("price")
                 ),
 
-                imageUri = cursor.getString(
+                imageUrl = cursor.getString(
                     cursor.getColumnIndexOrThrow("imageUri")
                 ) ?: ""
             )
@@ -351,7 +624,7 @@ class DataHelper(context: Context) :
     fun updateMenuById(
         id: Int,
         name: String,
-        price: String,
+        price: Int,
         imageUri: String,
         canteenId: Int
     ) {

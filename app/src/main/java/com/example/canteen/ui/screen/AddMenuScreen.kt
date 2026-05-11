@@ -19,22 +19,23 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 
-import com.example.canteen.data.DataHelper
+import com.example.canteen.data.FirebaseRepository
+import com.example.canteen.data.*
 import com.example.canteen.ui.theme.GrayBg
 import com.example.canteen.ui.theme.YellowPrimary
+import kotlinx.coroutines.launch
 
 @Composable
 fun AddMenuScreen(navController: NavController) {
 
     val context = LocalContext.current
-
-    // 🔥 DATABASE
-    val db = remember {
-        DataHelper(context)
-    }
+    val repository = remember { FirebaseRepository() }
+    val scope = rememberCoroutineScope()
 
     var name by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     var imageUri by remember {
         mutableStateOf<Uri?>(null)
@@ -43,7 +44,6 @@ fun AddMenuScreen(navController: NavController) {
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-
         imageUri = uri
     }
 
@@ -67,13 +67,10 @@ fun AddMenuScreen(navController: NavController) {
         // 🔥 NAMA MENU
         OutlinedTextField(
             value = name,
-            onValueChange = {
-                name = it
-            },
-            label = {
-                Text("Nama Menu")
-            },
-            modifier = Modifier.fillMaxWidth()
+            onValueChange = { name = it },
+            label = { Text("Nama Menu") },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -81,13 +78,21 @@ fun AddMenuScreen(navController: NavController) {
         // 🔥 HARGA
         OutlinedTextField(
             value = price,
-            onValueChange = {
-                price = it
-            },
-            label = {
-                Text("Harga")
-            },
-            modifier = Modifier.fillMaxWidth()
+            onValueChange = { price = it },
+            label = { Text("Harga") },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 🔥 KATEGORI
+        OutlinedTextField(
+            value = category,
+            onValueChange = { category = it },
+            label = { Text("Kategori") },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -97,9 +102,9 @@ fun AddMenuScreen(navController: NavController) {
             onClick = {
                 launcher.launch("image/*")
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
         ) {
-
             Text("Pilih Gambar")
         }
 
@@ -107,7 +112,6 @@ fun AddMenuScreen(navController: NavController) {
 
         // 🔥 PREVIEW IMAGE
         if (imageUri != null) {
-
             Image(
                 painter = rememberAsyncImagePainter(
                     model = imageUri
@@ -126,47 +130,113 @@ fun AddMenuScreen(navController: NavController) {
         Button(
             onClick = {
 
-                if (
-                    name.isBlank() ||
-                    price.isBlank()
-                ) {
-
+                if (name.isBlank() || price.isBlank() || category.isBlank()) {
                     Toast.makeText(
                         context,
                         "Isi semua field",
                         Toast.LENGTH_SHORT
                     ).show()
-
                     return@Button
                 }
 
-                // 🔥 SEMENTARA HARD CODE
-                // nanti bisa dinamis sesuai seller
-                val canteenId = 1
+                val priceInt = price.toIntOrNull()
+                if (priceInt == null) {
+                    Toast.makeText(
+                        context,
+                        "Harga harus angka",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@Button
+                }
 
-                db.insertMenu(
-                    canteenId,
-                    name,
-                    price,
-                    imageUri?.toString() ?: ""
-                )
+                isLoading = true
 
-                Toast.makeText(
-                    context,
-                    "Menu berhasil ditambahkan 🎉",
-                    Toast.LENGTH_SHORT
-                ).show()
+                scope.launch {
+                    val userResult = repository.getCurrentUser()
 
-                navController.popBackStack()
+                    userResult.onSuccess { user ->
+
+                        val canteenResult = repository.getCanteenByOwnerId(user.id)
+
+                        canteenResult.onSuccess { canteen ->
+
+                            if (canteen == null) {
+                                Toast.makeText(
+                                    context,
+                                    "Anda belum memiliki kantin. Hubungi admin.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                isLoading = false
+                                return@launch
+                            }
+
+                            // TODO: Upload image to Firebase Storage
+                            // For now, use empty string
+                            val imageUrl = ""
+
+                            val result = repository.addMenu(
+                                canteenId = canteen.id,
+                                canteenName = canteen.name,
+                                name = name,
+                                price = priceInt,
+                                imageUrl = imageUrl,
+                                category = category
+                            )
+
+                            result.onSuccess {
+                                Toast.makeText(
+                                    context,
+                                    "Menu berhasil ditambahkan 🎉",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+
+                                navController.popBackStack()
+                            }
+
+                            result.onFailure { error ->
+                                Toast.makeText(
+                                    context,
+                                    "Gagal: ${error.message}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+
+                        canteenResult.onFailure { error ->
+                            Toast.makeText(
+                                context,
+                                "Error: ${error.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+
+                    userResult.onFailure { error ->
+                        Toast.makeText(
+                            context,
+                            "Error: ${error.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+
+                    isLoading = false
+                }
             },
             colors = ButtonDefaults.buttonColors(
                 containerColor = YellowPrimary
             ),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            enabled = !isLoading
         ) {
-
-            Text("Simpan")
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = androidx.compose.ui.graphics.Color.Black
+                )
+            } else {
+                Text("Simpan")
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -174,9 +244,9 @@ fun AddMenuScreen(navController: NavController) {
         TextButton(
             onClick = {
                 navController.popBackStack()
-            }
+            },
+            enabled = !isLoading
         ) {
-
             Text("Kembali")
         }
     }
