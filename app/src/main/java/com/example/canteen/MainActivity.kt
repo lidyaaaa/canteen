@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import com.example.canteen.ui.screen.*
 import com.example.canteen.ui.screen.admin.AdminAddMenuScreen
 import com.example.canteen.ui.screen.admin.AdminHomeScreen
+import com.example.canteen.ui.screen.admin.AdminMenuRequestScreen
 import com.example.canteen.ui.screen.admin.AdminMenuScreen
 import com.example.canteen.ui.screen.admin.AdminSellerRequestsScreen
 import com.example.canteen.ui.screen.buyer.CartScreen
@@ -30,10 +31,14 @@ import com.example.canteen.ui.screen.buyer.MenuDetailScreen
 import com.example.canteen.ui.screen.buyer.OrdersScreen
 import com.example.canteen.ui.screen.buyer.ProfileScreen
 import com.example.canteen.ui.screen.seller.SellerHomeScreen
+import com.example.canteen.ui.screen.seller.SellerMenuRequestStatusScreen
+import com.example.canteen.ui.screen.seller.SellerMenuScreen
+import com.example.canteen.ui.screen.seller.SellerOrderHistoryScreen
 import com.example.canteen.ui.screen.seller.SellerOrdersScreen
+import com.example.canteen.ui.screen.seller.SellerProfileScreen
 import com.example.canteen.ui.screen.seller.SellerRequestScreen
 
-class MainActivity : ComponentActivity() {
+class   MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,6 +135,21 @@ class MainActivity : ComponentActivity() {
                                 SellerOrdersScreen(navController)
                             }
 
+                            composable("seller_order_history") {
+                                SellerOrderHistoryScreen(navController)
+                            }
+
+                            composable("seller_profile") {
+                                SellerProfileScreen(navController)
+                            }
+                            composable("seller_menu") {
+                                SellerMenuScreen(navController)
+                            }
+
+                            composable("seller_menu_requests") {
+                                SellerMenuRequestStatusScreen(navController)
+                            }
+
                             composable("add_menu") {
                                 AddMenuScreen(navController)
                             }
@@ -161,6 +181,10 @@ class MainActivity : ComponentActivity() {
 
                             composable("admin_seller_requests") {
                                 AdminSellerRequestsScreen(navController)
+                            }
+
+                            composable("admin_menu_requests") {
+                                AdminMenuRequestScreen(navController = navController)
                             }
 
                             // 📝 SELLER REQUEST
