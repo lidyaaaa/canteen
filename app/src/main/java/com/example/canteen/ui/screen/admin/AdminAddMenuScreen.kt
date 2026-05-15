@@ -1,4 +1,4 @@
-package com.example.canteen.ui.screen
+package com.example.canteen.ui.screen.admin
 
 import android.net.Uri
 import android.widget.Toast

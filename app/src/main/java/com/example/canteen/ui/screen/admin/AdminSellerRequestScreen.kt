@@ -1,4 +1,4 @@
-package com.example.canteen.ui.screen
+package com.example.canteen.ui.screen.admin
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.canteen.data.FirebaseRepository
 import com.example.canteen.ui.theme.*
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -41,7 +43,7 @@ fun AdminSellerRequestsScreen(navController: NavController) {
         scope.launch {
             isLoading = true
             try {
-                val snapshot = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val snapshot = FirebaseFirestore.getInstance()
                     .collection("seller_requests")
                     .whereEqualTo("status", "pending")
                     .get()
@@ -322,7 +324,7 @@ fun AdminSellerRequestsScreen(navController: NavController) {
                                             contentColor = RedError
                                         ),
                                         border = ButtonDefaults.outlinedButtonBorder.copy(
-                                            brush = androidx.compose.ui.graphics.SolidColor(RedError)
+                                            brush = SolidColor(RedError)
                                         ),
                                         shape = RoundedCornerShape(10.dp)
                                     ) {

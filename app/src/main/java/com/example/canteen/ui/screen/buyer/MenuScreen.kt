@@ -1,4 +1,4 @@
-package com.example.canteen.ui.screen
+package com.example.canteen.ui.screen.buyer
 
 import android.widget.Toast
 import androidx.compose.foundation.background

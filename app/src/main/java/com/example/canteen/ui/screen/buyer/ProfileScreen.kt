@@ -1,4 +1,4 @@
-package com.example.canteen.ui.screen
+package com.example.canteen.ui.screen.buyer
 
 import android.content.Context
 import androidx.compose.foundation.background
@@ -11,7 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -101,7 +101,7 @@ fun ProfileScreen(navController: NavController) {
                             },
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = White),
                             border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(White)
+                                brush = SolidColor(White)
                             )
                         ) {
                             Text("Logout")

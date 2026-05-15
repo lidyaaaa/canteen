@@ -20,6 +20,18 @@ import kotlinx.coroutines.launch
 
 // SCREEN
 import com.example.canteen.ui.screen.*
+import com.example.canteen.ui.screen.admin.AdminAddMenuScreen
+import com.example.canteen.ui.screen.admin.AdminHomeScreen
+import com.example.canteen.ui.screen.admin.AdminMenuScreen
+import com.example.canteen.ui.screen.admin.AdminSellerRequestsScreen
+import com.example.canteen.ui.screen.buyer.CartScreen
+import com.example.canteen.ui.screen.buyer.HomeScreen
+import com.example.canteen.ui.screen.buyer.MenuDetailScreen
+import com.example.canteen.ui.screen.buyer.OrdersScreen
+import com.example.canteen.ui.screen.buyer.ProfileScreen
+import com.example.canteen.ui.screen.seller.SellerHomeScreen
+import com.example.canteen.ui.screen.seller.SellerOrdersScreen
+import com.example.canteen.ui.screen.seller.SellerRequestScreen
 
 class MainActivity : ComponentActivity() {
 
